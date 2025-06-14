@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Бегущая лошадь в Three.js</title>
+  <style> body,html {margin:0;height:100%;overflow:hidden;background:#111} canvas{display:block;} </style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.5/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.5/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.5/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+  // Сцена, камера, рендер
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 200);
+  camera.position.set(0, 5, 20);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  // Освещение
+  scene.add(new THREE.AmbientLight(0x888888));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+  dir.position.set(10, 20, 10);
+  scene.add(dir);
+
+  // GLTF загрузка модели лошади
+  let mixer;
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/gltf/Horse.glb',
+    gltf => {
+      const horse = gltf.scene;
+      horse.scale.set(0.1, 0.1, 0.1);
+      scene.add(horse);
+
+      // Настройка анимации
+      mixer = new THREE.AnimationMixer(horse);
+      const action = mixer.clipAction(gltf.animations[0]);
+      action.play();
+    },
+    xhr => console.log(`Загрузка: ${(xhr.loaded/xhr.total*100).toFixed(1)}%`),
+    error => console.error('Ошибка загрузки модели', error)
+  );
+
+  // Анимация и рендер
+  const clock = new THREE.Clock();
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+
+    if (mixer) mixer.update(dt);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // Обработка изменения размера окна
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+</body>
+</html>
