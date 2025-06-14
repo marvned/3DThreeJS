@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D мир с водной поверхностью</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.5/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.5/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // 1. Создаём сцену
+        const scene = new THREE.Scene();
+        
+        // 2. Создаём камеру
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // 3. Создаём рендер
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);  // Устанавливаем размер канваса
+        document.body.appendChild(renderer.domElement);  // Добавляем канвас на страницу
+
+        // 4. Создаём 3D-объект (куб)
+        const geometry = new THREE.BoxGeometry(1, 1, 1);  // Геометрия куба
+        const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });  // Стандартный материал для эффекта освещения
+        const cube = new THREE.Mesh(geometry, material);  // Создаём Mesh (геометрия + материал)
+        cube.castShadow = true;  // Куб будет отбрасывать тень
+        scene.add(cube);  // Добавляем куб в сцену
+
+        // 5. Освещение
+        const ambientLight = new THREE.AmbientLight(0x404040, 1);  // Мягкое освещение
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);  // Точечный свет
+        pointLight.position.set(5, 5, 5);  // Позиция источника света
+        scene.add(pointLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);  // Направленный свет
+        directionalLight.position.set(-5, 5, 5).normalize();  // Позиция и направление света
+        scene.add(directionalLight);
+
+        // 6. Водная поверхность
+        const waterGeometry = new THREE.PlaneGeometry(100, 100);  // Геометрия для воды
+        const waterMaterial = new THREE.MeshBasicMaterial({ color: 0x1e90ff, transparent: true, opacity: 0.7 });  // Материал воды
+        const water = new THREE.Mesh(waterGeometry, waterMaterial);
+        water.rotation.x = - Math.PI / 2;  // Поворачиваем плоскость для создания воды
+        water.position.y = -1;  // Позиционируем воду чуть ниже куба
+        scene.add(water);  // Добавляем воду в сцену
+
+        // 7. Настроим камеру
+        camera.position.z = 5;
+
+        // 8. Добавляем OrbitControls для управления камерой
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.screenSpacePanning = false;
+        controls.maxDistance = 10;
+        controls.minDistance = 2;
+
+        // 9. Функция анимации
+        function animate() {
+            requestAnimationFrame(animate);  // Запрашиваем следующий кадр анимации
+
+            // Вращаем куб
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+
+            // Обновляем управление камерой
+            controls.update();
+
+            // Рендерим сцену с камерой
+            renderer.render(scene, camera);
+        }
+
+        // Запускаем анимацию
+        animate();
+
+        // 10. Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+        
+    </script>
+</body>
+</html>

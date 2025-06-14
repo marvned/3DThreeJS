@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D мир на Three.js с OrbitControls</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.5/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.5/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // 1. Создаём сцену
+        const scene = new THREE.Scene();
+        
+        // 2. Создаём камеру (параметры: угол обзора, аспект, ближняя и дальняя плоскости отсечения)
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // 3. Создаём рендер (с помощью WebGLRenderer)
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);  // Устанавливаем размер канваса
+        document.body.appendChild(renderer.domElement);  // Добавляем канвас на страницу
+
+        // 4. Создаём 3D-объект (например, куб)
+        const geometry = new THREE.BoxGeometry(1, 1, 1);  // Геометрия куба
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });  // Материал (зеленый цвет)
+        const cube = new THREE.Mesh(geometry, material);  // Создаём Mesh (геометрия + материал)
+        scene.add(cube);  // Добавляем куб в сцену
+
+        // 5. Устанавливаем камеру
+        camera.position.z = 5;
+
+        // 6. Добавляем OrbitControls для управления камерой
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Включаем плавное движение
+        controls.dampingFactor = 0.25; // Устанавливаем фактор замедления
+        controls.screenSpacePanning = false; // Отключаем панорамирование по экрану
+        controls.maxDistance = 10; // Максимальное расстояние камеры от центра сцены
+        controls.minDistance = 2; // Минимальное расстояние камеры
+
+        // 7. Функция анимации
+        function animate() {
+            requestAnimationFrame(animate);  // Запрашиваем следующий кадр анимации
+
+            // Вращаем куб
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+
+            // Обновляем контроль камеры
+            controls.update(); // Это важно для плавного движения камеры
+
+            // Рендерим сцену с камерой
+            renderer.render(scene, camera);
+        }
+
+        // Запускаем анимацию
+        animate();
+
+        // 8. Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>

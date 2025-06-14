@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Динамичная сцена с переходом по ссылке</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.5/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.5/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // 1. Создаем сцену
+        const scene = new THREE.Scene();
+        
+        // 2. Создаем камеру
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // 3. Создаем рендер
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);  // Устанавливаем размер канваса
+        document.body.appendChild(renderer.domElement);  // Добавляем канвас на страницу
+
+        // 4. Загрузка текстуры для объекта
+        const textureLoader = new THREE.TextureLoader();
+        const texture = textureLoader.load('https://threejs.org/examples/textures/brick_diffuse.jpg'); // Пример текстуры
+
+        // 5. Создаем объект (сфера)
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const material = new THREE.MeshStandardMaterial({
+            map: texture,  // Используем загруженную текстуру
+            emissive: new THREE.Color(0xFF0000),  // Эмиссия для светящегося эффекта
+        });
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.castShadow = true;  // Объект будет отбрасывать тень
+        sphere.position.y = 1;  // Поднимаем сферу над землей
+        scene.add(sphere);  // Добавляем объект в сцену
+
+        // 6. Создаем землю (плоскость)
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.5 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = - Math.PI / 2;  // Поворачиваем плоскость для земли
+        ground.position.y = -1;  // Позиционируем землю ниже
+        ground.receiveShadow = true;  // Земля будет принимать тени
+        scene.add(ground);
+
+        // 7. Освещение
+        const ambientLight = new THREE.AmbientLight(0x404040, 1);  // Мягкое освещение
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);  // Точечный свет
+        pointLight.position.set(5, 5, 5);  // Позиция источника света
+        pointLight.castShadow = true;  // Этот свет будет создавать тени
+        scene.add(pointLight);
+
+        // 8. Фон сцены (градиентное небо)
+        scene.background = new THREE.Color(0x87CEEB);  // Светло-голубой цвет фона (небо)
+
+        // 9. Настроим камеру
+        camera.position.z = 5;
+
+        // 10. Добавляем OrbitControls для управления камерой
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.screenSpacePanning = false;
+        controls.maxDistance = 10;
+        controls.minDistance = 2;
+
+        // 11. Настройка Raycaster для обработки кликов
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isSphereClicked = false;
+
+        // Функция для обработки кликов мыши
+        function onMouseClick(event) {
+            // Нормализуем координаты мыши в диапазоне от -1 до 1
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+            // Обновляем луч Raycaster с текущими координатами мыши
+            raycaster.update();
+
+            // Проверяем пересечение луча с объектами в сцене
+            const intersects = getIntersections();
+            if (intersects.length > 0) {
+                // Если сфера была нажата, переходим по ссылке
+                window.location.href = 'https://www.example.com';  // Здесь указываем ссылку для перехода
+            }
+        }
+
+        // Функция для проверки пересечений
+        function getIntersections() {
+            // Получаем пересечения луча с объектами в сцене
+            raycaster.update();
+            return raycaster.intersectObjects(scene.children);
+        }
+
+        // 12. Функция анимации
+        function animate() {
+            requestAnimationFrame(animate);  // Запрашиваем следующий кадр анимации
+
+            // Динамичное изменение позиции объекта (сфера будет двигаться)
+            sphere.position.y = Math.sin(Date.now() * 0.002) * 2 + 1;
+
+            // Динамичное изменение освещения (смена дня и ночи)
+            pointLight.intensity = Math.abs(Math.sin(Date.now() * 0.001)) * 1.5 + 0.5;
+
+            // Динамичное изменение цвета материала
+            material.emissive.setHSL((Math.sin(Date.now() * 0.001) + 1) / 2, 1, 0.5);
+
+            // Обновляем управление камерой
+            controls.update();
+
+            // Рендерим сцену с камерой
+            renderer.render(scene, camera);
+        }
+
+        // Запускаем анимацию
+        animate();
+
+        // 13. Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // 14. Обработка кликов мыши
+        window.addEventListener('click', onMouseClick, false);
+    </script>
+</body>
+</html>
