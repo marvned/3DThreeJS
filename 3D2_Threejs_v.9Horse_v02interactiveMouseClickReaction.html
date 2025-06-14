@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Бегущая лошадь с пылью и травой</title>
+  <style>
+    body, html { margin: 0; height: 100%; overflow: hidden; background: #87ceeb; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.5/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.5/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.5/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+let scene, camera, renderer, controls;
+let mixer, horse, action;
+let isRunning = true;
+
+// Инициализация
+scene = new THREE.Scene();
+camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 5, 15);
+
+renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 2, 0);
+controls.enableDamping = true;
+
+// Свет
+scene.add(new THREE.AmbientLight(0x666666));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(10, 20, 10);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+// Трасса
+const road = new THREE.Mesh(
+  new THREE.PlaneGeometry(4, 100),
+  new THREE.MeshStandardMaterial({ color: 0x6b4e12 })
+);
+road.rotation.x = -Math.PI / 2;
+road.receiveShadow = true;
+scene.add(road);
+
+// Менее яркая трава
+const grassMat = new THREE.MeshStandardMaterial({ color: 0x4c9141 }); // тёмно-зелёный
+const grassLeft = new THREE.Mesh(new THREE.PlaneGeometry(20, 100), grassMat);
+const grassRight = grassLeft.clone();
+grassLeft.position.x = -12;
+grassRight.position.x = 12;
+grassLeft.rotation.x = grassRight.rotation.x = -Math.PI / 2;
+grassLeft.receiveShadow = grassRight.receiveShadow = true;
+scene.add(grassLeft, grassRight);
+
+// Пыль
+const dustParticles = [];
+const particleCount = 40;
+const particleSize = 0.1;
+
+function createDustEmitter() {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(particleCount * 3);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0xaaaaaa,
+    size: particleSize,
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false
+  });
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+  return { geo, pos, mesh: points };
+}
+
+for (let i = 0; i < 4; i++) {
+  dustParticles.push(createDustEmitter());
+}
+
+function updateDust(dust, x, y, z) {
+  for (let i = 0; i < particleCount; i++) {
+    dust.pos[i * 3] = x + (Math.random() - 0.5) * 0.2;
+    dust.pos[i * 3 + 1] = y + Math.random() * 0.2;
+    dust.pos[i * 3 + 2] = z + (Math.random() - 0.5) * 0.2;
+  }
+  dust.geo.attributes.position.needsUpdate = true;
+}
+
+function emitDustUnderHorse() {
+  if (!horse) return;
+  const base = horse.position;
+  updateDust(dustParticles[0], base.x - 0.3, 0.1, base.z + 0.2); // перед левое
+  updateDust(dustParticles[1], base.x + 0.3, 0.1, base.z + 0.2); // перед правое
+  updateDust(dustParticles[2], base.x - 0.3, 0.1, base.z - 0.3); // зад левое
+  updateDust(dustParticles[3], base.x + 0.3, 0.1, base.z - 0.3); // зад правое
+}
+
+// Загрузка модели лошади
+const loader = new THREE.GLTFLoader();
+loader.load(
+  'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/gltf/Horse.glb',
+  gltf => {
+    horse = gltf.scene;
+    horse.scale.set(0.1, 0.1, 0.1);
+    horse.position.set(0, 0, 0);
+    horse.traverse(obj => {
+      if (obj.isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+    });
+    scene.add(horse);
+    mixer = new THREE.AnimationMixer(horse);
+    action = mixer.clipAction(gltf.animations[0]);
+    action.play();
+  }
+);
+
+// Клик для паузы/воспроизведения
+window.addEventListener('click', () => {
+  isRunning = !isRunning;
+  if (action) action.paused = !isRunning;
+});
+window.addEventListener('touchstart', () => {
+  isRunning = !isRunning;
+  if (action) action.paused = !isRunning;
+});
+
+// Анимация
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = clock.getDelta();
+  if (mixer && isRunning) {
+    mixer.update(delta);
+    emitDustUnderHorse();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
